@@ -3,50 +3,115 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Proyecto Azure</title>
+    <title>Notas Azure PaaS</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        body { font-family: sans-serif; max-width: 600px; margin: 2rem auto; padding: 1rem; text-align: center;}
-        input { width: 80%; padding: 10px; margin: 5px 0; }
-        button { padding: 10px 20px; background-color: #0078D4; color: white; border: none; cursor: pointer; }
-        ul { list-style: none; padding: 0; }
-        li { background: #f4f4f4; margin: 5px 0; padding: 10px; display: flex; justify-content: space-between; }
-        .del { background: red; color: white; border: none; cursor: pointer; }
+        body { background-color: #f0f2f5; }
+        .note-card { 
+            border: none; 
+            border-left: 5px solid #0d6efd; 
+            transition: transform 0.2s;
+        }
+        .note-card:hover { transform: translateY(-5px); }
     </style>
 </head>
 <body>
-    <h1>📝 Mis Notas en la Nube</h1>
-    <input id="titulo" placeholder="Título"><br>
-    <input id="contenido" placeholder="Contenido"><br>
-    <button onclick="crear()">Guardar Nota</button>
-    <ul id="lista"></ul>
+    <nav class="navbar navbar-dark bg-primary mb-4">
+        <div class="container">
+            <span class="navbar-brand h1 mb-0">☁️ Proyecto Azure Notes (API)</span>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="row justify-content-center mb-5">
+            <div class="col-md-6">
+                <div class="card p-4 shadow-sm">
+                    <h5 class="mb-3">Nueva Nota</h5>
+                    <form id="noteForm">
+                        <input type="text" id="titulo" class="form-control mb-2 fw-bold" placeholder="Título" required>
+                        <textarea id="contenido" class="form-control mb-2" placeholder="Escribe algo..." rows="3" required></textarea>
+                        <div class="text-end">
+                            <button type="submit" class="btn btn-primary">Guardar Nota</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="row" id="lista-notas">
+            <div class="col-12 text-center text-muted">
+                <div class="spinner-border text-primary" role="status"></div>
+                <p>Cargando datos de Azure...</p>
+            </div>
+        </div>
+    </div>
 
     <script>
-        async function cargar() {
-            const res = await fetch("/api/notas");
-            const datos = await res.json();
-            const lista = document.getElementById("lista");
-            lista.innerHTML = "";
-            datos.forEach(d => {
-                lista.innerHTML += `<li>${d.titulo}: ${d.contenido} <button class="del" onclick="borrar('${d.id}')">X</button></li>`;
-            });
-        }
-        async function crear() {
-            const titulo = document.getElementById("titulo").value;
-            const contenido = document.getElementById("contenido").value;
-            await fetch("/api/notas", {
-                method: "POST",
-                headers: {"Content-Type": "application/json"},
-                body: JSON.stringify({titulo, contenido})
-            });
-            cargar();
-        }
-        async function borrar(id) {
-            if(confirm("¿Borrar?")) {
-                await fetch(`/api/notas/${id}`, {method: "DELETE"});
-                cargar();
+        const API_URL = "/api/notas";
+
+        // 1. CARGAR NOTAS
+        async function cargarNotas() {
+            const contenedor = document.getElementById('lista-notas');
+            try {
+                const res = await fetch(API_URL);
+                const notas = await res.json();
+                
+                contenedor.innerHTML = ''; // Limpiar
+
+                if (notas.length === 0) {
+                    contenedor.innerHTML = '<p class="text-center text-muted">No hay notas. ¡Crea la primera!</p>';
+                    return;
+                }
+
+                notas.forEach(nota => {
+                    const html = `
+                        <div class="col-md-4 mb-4">
+                            <div class="card note-card h-100 shadow-sm">
+                                <div class="card-body">
+                                    <h5 class="card-title">${escapeHtml(nota.titulo)}</h5>
+                                    <p class="card-text text-muted">${escapeHtml(nota.contenido)}</p>
+                                </div>
+                                <div class="card-footer bg-white border-0 text-end">
+                                    <button onclick="borrarNota('${nota.id}')" class="btn btn-outline-danger btn-sm">Eliminar</button>
+                                </div>
+                            </div>
+                        </div>`;
+                    contenedor.innerHTML += html;
+                });
+            } catch (e) {
+                contenedor.innerHTML = `<div class="alert alert-danger">Error: ${e.message}</div>`;
             }
         }
-        cargar();
+
+        // 2. CREAR NOTA
+        document.getElementById('noteForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const titulo = document.getElementById('titulo').value;
+            const contenido = document.getElementById('contenido').value;
+
+            await fetch(API_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ titulo, contenido })
+            });
+
+            document.getElementById('titulo').value = '';
+            document.getElementById('contenido').value = '';
+            cargarNotas();
+        });
+
+        // 3. BORRAR NOTA
+        async function borrarNota(id) {
+            if(!confirm("¿Borrar nota?")) return;
+            await fetch(`${API_URL}/${id}`, { method: 'DELETE' });
+            cargarNotas();
+        }
+
+        function escapeHtml(text) {
+            return text ? text.replace(/</g, "&lt;").replace(/>/g, "&gt;") : "";
+        }
+
+        cargarNotas();
     </script>
 </body>
 </html>
