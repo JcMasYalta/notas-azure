@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Proyecto Azure</title>
+    <style>
+        body { font-family: sans-serif; max-width: 600px; margin: 2rem auto; padding: 1rem; text-align: center;}
+        input { width: 80%; padding: 10px; margin: 5px 0; }
+        button { padding: 10px 20px; background-color: #0078D4; color: white; border: none; cursor: pointer; }
+        ul { list-style: none; padding: 0; }
+        li { background: #f4f4f4; margin: 5px 0; padding: 10px; display: flex; justify-content: space-between; }
+        .del { background: red; color: white; border: none; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>📝 Mis Notas en la Nube</h1>
+    <input id="titulo" placeholder="Título"><br>
+    <input id="contenido" placeholder="Contenido"><br>
+    <button onclick="crear()">Guardar Nota</button>
+    <ul id="lista"></ul>
+
+    <script>
+        async function cargar() {
+            const res = await fetch("/api/notas");
+            const datos = await res.json();
+            const lista = document.getElementById("lista");
+            lista.innerHTML = "";
+            datos.forEach(d => {
+                lista.innerHTML += `<li>${d.titulo}: ${d.contenido} <button class="del" onclick="borrar('${d.id}')">X</button></li>`;
+            });
+        }
+        async function crear() {
+            const titulo = document.getElementById("titulo").value;
+            const contenido = document.getElementById("contenido").value;
+            await fetch("/api/notas", {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({titulo, contenido})
+            });
+            cargar();
+        }
+        async function borrar(id) {
+            if(confirm("¿Borrar?")) {
+                await fetch(`/api/notas/${id}`, {method: "DELETE"});
+                cargar();
+            }
+        }
+        cargar();
+    </script>
+</body>
+</html>
